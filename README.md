@@ -9,4 +9,4 @@ Aplikasi ini dirancang dengan menggunakan ReactJS/JAvascript dan PHP Laravel.
 Proyek LINK:
 ( Mainnet Menanti OM )
 
-https://berkahlestarijaya.com ( Testnet )
+https://tesnet.berkahlestarijaya.com ( Testnet )
