@@ -1,0 +1,10 @@
+1. CRUD Produk: Fitur ini akan memungkinkan pedagang untuk menambah, mengedit, dan menghapus produk mereka di marketplace.
+
+
+2. Integrasi Pembayaran: Integrasi API pembayaran yang mendukung transaksi dalam ekosistem Pi Network atau solusi alternatif.
+
+
+3. Notifikasi: Fitur notifikasi untuk memperbarui status pesanan, pembayaran, atau informasi penting lainnya.
+
+
+4. Otentikasi dan Manajemen Pengguna: Melengkapi fitur otentikasi untuk login, registrasi, dan peran pengguna (pedagang, admin, pelanggan).
