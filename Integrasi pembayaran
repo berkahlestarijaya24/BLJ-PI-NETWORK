@@ -1,0 +1,202 @@
+
+Langkah 1: Daftar dan Dapatkan Kredensial API Midtrans
+
+1. Daftar di Midtrans dan buat akun.
+
+
+2. Buat proyek di dashboard Midtrans dan salin Client Key dan Server Key untuk konfigurasi.
+
+
+
+Langkah 2: Instal Paket Midtrans di Laravel
+
+1. Instal Midtrans SDK: Tambahkan library Midtrans ke proyek Laravel Anda.
+
+composer require midtrans/midtrans-php
+
+
+2. Konfigurasi Midtrans di Laravel: Buat file konfigurasi Midtrans (config/midtrans.php) dan masukkan kredensial API.
+
+<?php
+
+return [
+    'server_key' => env('MIDTRANS_SERVER_KEY'),
+    'client_key' => env('MIDTRANS_CLIENT_KEY'),
+    'is_production' => env('MIDTRANS_IS_PRODUCTION', false),
+];
+
+Di file .env, tambahkan kredensial Midtrans.
+
+MIDTRANS_SERVER_KEY=YOUR_SERVER_KEY
+MIDTRANS_CLIENT_KEY=YOUR_CLIENT_KEY
+MIDTRANS_IS_PRODUCTION=false
+
+
+3. Buat Controller Pembayaran: Buat controller untuk menangani proses pembayaran.
+
+php artisan make:controller PaymentController
+
+
+4. Implementasi Logika Pembayaran di PaymentController: Di dalam PaymentController, buat metode untuk memproses pembayaran.
+
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Midtrans\Config;
+use Midtrans\Snap;
+use App\Models\Order;
+
+class PaymentController extends Controller
+{
+    public function __construct() {
+        Config::$serverKey = config('midtrans.server_key');
+        Config::$isProduction = config('midtrans.is_production');
+        Config::$isSanitized = true;
+        Config::$is3ds = true;
+    }
+
+    public function createTransaction(Request $request) {
+        $orderID = uniqid(); // atau gunakan ID pesanan dari database Anda
+        $transactionDetails = [
+            'order_id' => $orderID,
+            'gross_amount' => $request->amount, // Jumlah total transaksi
+        ];
+
+        $itemDetails = [
+            [
+                'id' => 'item1',
+                'price' => $request->amount,
+                'quantity' => 1,
+                'name' => $request->product_name,
+            ],
+        ];
+
+        $customerDetails = [
+            'first_name' => $request->user_name,
+            'email' => $request->user_email,
+            'phone' => $request->user_phone,
+        ];
+
+        $params = [
+            'transaction_details' => $transactionDetails,
+            'item_details' => $itemDetails,
+            'customer_details' => $customerDetails,
+        ];
+
+        try {
+            $snapToken = Snap::getSnapToken($params);
+            return response()->json(['snap_token' => $snapToken]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+}
+
+
+5. Tambahkan Route untuk Pembayaran: Tambahkan route di routes/api.php untuk memanggil endpoint pembayaran.
+
+use App\Http\Controllers\PaymentController;
+
+Route::post('/create-transaction', [PaymentController::class, 'createTransaction']);
+
+
+
+Langkah 3: Integrasi Frontend di ReactJS
+
+1. Tambahkan Script Midtrans Snap: Di index.html proyek React, tambahkan script Midtrans Snap untuk memudahkan pemanggilan pembayaran di frontend.
+
+<script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="YOUR_CLIENT_KEY"></script>
+
+
+2. Fungsi untuk Membuat Transaksi: Tambahkan fungsi di frontend untuk mengirim request ke API Laravel dan memproses pembayaran menggunakan Snap.
+
+import React, { useState } from 'react';
+
+function Payment() {
+    const [amount, setAmount] = useState('');
+    const [productName, setProductName] = useState('');
+
+    const handlePayment = async () => {
+        try {
+            const response = await fetch('https://tesnet.berkahlestarijaya.com/api/create-transaction', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    amount,
+                    product_name: productName,
+                    user_name: 'Nama Pengguna', // sesuaikan dengan data pengguna
+                    user_email: 'email@pengguna.com',
+                    user_phone: '08123456789',
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.snap_token) {
+                // Panggil Snap untuk proses pembayaran
+                window.snap.pay(data.snap_token, {
+                    onSuccess: function(result) {
+                        alert("Pembayaran berhasil!");
+                        console.log(result);
+                    },
+                    onPending: function(result) {
+                        alert("Pembayaran menunggu.");
+                        console.log(result);
+                    },
+                    onError: function(result) {
+                        alert("Pembayaran gagal.");
+                        console.log(result);
+                    },
+                    onClose: function() {
+                        alert("Anda menutup pop-up pembayaran.");
+                    },
+                });
+            }
+        } catch (error) {
+            console.error("Terjadi kesalahan:", error);
+        }
+    };
+
+    return (
+        <div>
+            <h2>Bayar Produk</h2>
+            <input
+                type="text"
+                placeholder="Nama Produk"
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+            />
+            <input
+                type="number"
+                placeholder="Jumlah Pembayaran"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+            />
+            <button onClick={handlePayment}>Bayar Sekarang</button>
+        </div>
+    );
+}
+
+export default Payment;
+
+
+3. Menampilkan Status Pembayaran: Snap akan memberikan status pembayaran secara langsung dalam fungsi onSuccess, onPending, dan onError. Anda bisa menyimpan status ini ke database melalui API jika diperlukan, atau mengarahkan pengguna ke halaman riwayat pembayaran setelah transaksi selesai.
+
+
+
+Langkah 4: Pengelolaan Status Pembayaran (Opsional)
+
+Untuk melacak status pembayaran, Midtrans memiliki fitur Webhook yang bisa memanggil endpoint di backend setiap kali terjadi perubahan status pembayaran. Anda bisa mengaktifkan webhook di dashboard Midtrans dan membuat endpoint di Laravel untuk menerima notifikasi tersebut.
+
+Contoh Route dan Controller untuk Webhook di Laravel:
+
+Route::post('/payment-notification', [PaymentController::class, 'handleNotification']);
+
+public function handleNotification(Request $request) {
+    $notification = $request->all();
+    // Proses notifikasi dan update status pembayaran di database
+}
