@@ -1,0 +1,148 @@
+
+Langkah 1: Otentikasi di Laravel (Backend)
+
+Laravel menyediakan fitur otentikasi bawaan yang bisa diatur dengan cepat menggunakan sanctum. Berikut ini langkah-langkahnya:
+
+1. Install Sanctum:
+
+composer require laravel/sanctum
+
+
+2. Publikasikan Konfigurasi Sanctum:
+
+php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
+
+
+3. Migrasi Database untuk Token Otentikasi: Jalankan migrasi untuk membuat tabel token.
+
+php artisan migrate
+
+
+4. Atur Sanctum Middleware: Di config/auth.php, pastikan 'sanctum' diset sebagai guard API Anda.
+
+
+5. Menambahkan Trait HasApiTokens di Model User: Buka file User.php dan tambahkan HasApiTokens seperti ini:
+
+use Laravel\Sanctum\HasApiTokens;
+
+class User extends Authenticatable {
+    use HasApiTokens, Notifiable;
+}
+
+
+6. Routes untuk Registrasi dan Login: Tambahkan endpoint untuk registrasi dan login di file api.php.
+
+use App\Http\Controllers\AuthController;
+
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+
+
+7. Controller untuk Otentikasi: Buat AuthController untuk menangani registrasi dan login:
+
+php artisan make:controller AuthController
+
+Di dalam AuthController, tambahkan metode untuk register dan login:
+
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
+
+class AuthController extends Controller
+{
+    public function register(Request $request) {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8',
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+        ]);
+    }
+
+    public function login(Request $request) {
+        if (!Auth::attempt($request->only('email', 'password'))) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $user = User::where('email', $request->email)->firstOrFail();
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+        ]);
+    }
+
+    public function logout(Request $request) {
+        $request->user()->tokens()->delete();
+
+        return response()->json(['message' => 'Logged out']);
+    }
+}
+
+
+
+Langkah 2: Otentikasi di ReactJS (Frontend)
+
+ReactJS akan menggunakan token yang diberikan oleh Laravel untuk mengakses API.
+
+1. Atur State untuk Otentikasi: Tambahkan state untuk menyimpan token pengguna.
+
+import { useState } from 'react';
+
+const [token, setToken] = useState(null);
+
+const login = async (email, password) => {
+    const response = await fetch('https://tesnet.berkahlestarijaya.com/api/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+    setToken(data.access_token);
+    localStorage.setItem('token', data.access_token); // Simpan token di local storage
+};
+
+
+2. Mengamankan Request API dengan Token: Setiap kali Anda melakukan request ke API yang dilindungi, tambahkan header Authorization.
+
+const fetchProtectedData = async () => {
+    const token = localStorage.getItem('token');
+    const response = await fetch('https://tesnet.berkahlestarijaya.com/api/protected-route', {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+        },
+    });
+
+    const data = await response.json();
+    console.log(data);
+};
+
+
+3. Logout: Hapus token dari localStorage saat pengguna logout.
+
+const logout = () => {
+    setToken(null);
+    localStorage.removeItem('token');
+};
+

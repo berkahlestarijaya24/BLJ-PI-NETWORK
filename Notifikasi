@@ -1,0 +1,166 @@
+Langkah 1: Daftar dan Konfigurasi Pusher
+
+1. Buat akun di Pusher dan buat aplikasi baru.
+
+
+2. Catat kredensial aplikasi seperti app_id, key, dan secret, serta cluster yang diperlukan untuk konfigurasi.
+
+
+
+Langkah 2: Instal Pusher di Backend Laravel
+
+1. Instal Paket Pusher: Tambahkan paket Pusher ke proyek Laravel.
+
+composer require pusher/pusher-php-server
+
+
+2. Konfigurasi Pusher di Laravel: Buka file .env dan tambahkan kredensial Pusher.
+
+PUSHER_APP_ID=your_app_id
+PUSHER_APP_KEY=your_app_key
+PUSHER_APP_SECRET=your_app_secret
+PUSHER_APP_CLUSTER=your_cluster
+BROADCAST_DRIVER=pusher
+
+
+3. Konfigurasi Broadcast di Laravel: Buka file config/broadcasting.php dan pastikan Pusher diset sebagai default driver.
+
+'default' => env('BROADCAST_DRIVER', 'pusher'),
+
+
+4. Buat Event Laravel untuk Notifikasi: Gunakan artisan untuk membuat event NotificationEvent.
+
+php artisan make:event NotificationEvent
+
+Edit event tersebut di app/Events/NotificationEvent.php:
+
+<?php
+
+namespace App\Events;
+
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
+class NotificationEvent implements ShouldBroadcast
+{
+    use Dispatchable, InteractsWithSockets, SerializesModels;
+
+    public $message;
+
+    public function __construct($message) {
+        $this->message = $message;
+    }
+
+    public function broadcastOn() {
+        return ['notification-channel'];
+    }
+
+    public function broadcastAs() {
+        return 'notification-event';
+    }
+}
+
+
+5. Trigger Event dari Controller: Misalkan Anda ingin mengirim notifikasi ketika pesanan baru dibuat atau status pembayaran diperbarui. Panggil NotificationEvent di controller yang sesuai.
+
+use App\Events\NotificationEvent;
+
+public function someAction() {
+    $message = "Pembayaran berhasil! Pesanan Anda sedang diproses.";
+    event(new NotificationEvent($message));
+    return response()->json(['message' => 'Notifikasi dikirim.']);
+}
+
+
+
+Langkah 3: Instal Pusher di Frontend ReactJS
+
+1. Instal Pusher JS: Tambahkan library Pusher ke proyek ReactJS.
+
+npm install pusher-js
+
+
+2. Inisialisasi Pusher di ReactJS: Buat file baru Notification.js dan tambahkan kode berikut untuk mendengarkan event dari Laravel.
+
+import React, { useEffect, useState } from 'react';
+import Pusher from 'pusher-js';
+
+function Notification() {
+    const [messages, setMessages] = useState([]);
+
+    useEffect(() => {
+        // Inisialisasi Pusher
+        const pusher = new Pusher('your_app_key', {
+            cluster: 'your_cluster',
+        });
+
+        const channel = pusher.subscribe('notification-channel');
+        channel.bind('notification-event', function(data) {
+            setMessages((prevMessages) => [...prevMessages, data.message]);
+        });
+
+        // Cleanup pada unmount
+        return () => {
+            channel.unbind_all();
+            channel.unsubscribe();
+        };
+    }, []);
+
+    return (
+        <div>
+            <h2>Notifikasi</h2>
+            <ul>
+                {messages.map((message, index) => (
+                    <li key={index}>{message}</li>
+                ))}
+            </ul>
+        </div>
+    );
+}
+
+export default Notification;
+
+
+3. Menampilkan Komponen Notifikasi: Gunakan komponen Notification ini di bagian aplikasi React Anda yang sesuai, misalnya di bagian App.js atau Dashboard pengguna.
+
+import React from 'react';
+import Notification from './Notification';
+
+function App() {
+    return (
+        <div>
+            <h1>Dashboard Berkah Lestari Jaya</h1>
+            <Notification />
+        </div>
+    );
+}
+
+export default App;
+
+
+
+Langkah 4: Uji Notifikasi
+
+1. Jalankan server Laravel dan aplikasi ReactJS Anda.
+
+
+2. Lakukan tindakan yang memicu event di backend (misalnya, melakukan pembayaran atau membuat pesanan baru).
+
+
+3. Anda akan melihat notifikasi muncul secara real-time di aplikasi React tanpa harus me-refresh halaman.
+
+
+
+(Opsional) Menyimpan Notifikasi di Database
+
+Jika Anda ingin menyimpan notifikasi, buat model Notification di Laravel, dan simpan notifikasi sebelum mem-broadcast event, misalnya:
+
+use App\Models\Notification as NotificationModel;
+
+public function someAction() {
+   $message = "Pesanan baru telah dibuat!";
+   NotificationModel::create(['message' => $message]);
+   event(new NotificationEvent($message));
+   return response()->json(['message' => 'Notifikasi berhasil disimpan dan dikirim.']);

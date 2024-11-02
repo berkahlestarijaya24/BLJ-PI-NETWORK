@@ -1,0 +1,223 @@
+
+1. Buat Model dan Migrasi Produk: Buat model Product beserta migrasinya.
+
+php artisan make:model Product -m
+
+
+2. Definisikan Struktur Tabel Produk: Buka file migrasi di database/migrations/xxxx_xx_xx_create_products_table.php dan tambahkan kolom yang diperlukan.
+
+public function up() {
+    Schema::create('products', function (Blueprint $table) {
+        $table->id();
+        $table->string('name');
+        $table->text('description');
+        $table->decimal('price', 10, 2);
+        $table->integer('stock');
+        $table->timestamps();
+    });
+}
+
+
+3. Migrasi Tabel ke Database: Jalankan perintah migrasi untuk membuat tabel products.
+
+php artisan migrate
+
+
+4. Buat Controller untuk Produk: Buat controller untuk menangani CRUD produk.
+
+php artisan make:controller ProductController
+
+
+5. Implementasi CRUD di ProductController: Tambahkan metode untuk index, store, show, update, dan destroy pada ProductController.
+
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Product;
+use Illuminate\Http\Request;
+
+class ProductController extends Controller
+{
+    // Menampilkan semua produk
+    public function index() {
+        return Product::all();
+    }
+
+    // Menambahkan produk baru
+    public function store(Request $request) {
+        $request->validate([
+            'name' => 'required',
+            'description' => 'required',
+            'price' => 'required|numeric',
+            'stock' => 'required|integer',
+        ]);
+
+        $product = Product::create($request->all());
+        return response()->json($product, 201);
+    }
+
+    // Menampilkan produk tertentu
+    public function show($id) {
+        return Product::findOrFail($id);
+    }
+
+    // Mengupdate produk
+    public function update(Request $request, $id) {
+        $product = Product::findOrFail($id);
+        $product->update($request->all());
+        return response()->json($product, 200);
+    }
+
+    // Menghapus produk
+    public function destroy($id) {
+        $product = Product::findOrFail($id);
+        $product->delete();
+        return response()->json(null, 204);
+    }
+}
+
+
+6. Tambahkan Route untuk CRUD Produk: Di file routes/api.php, tambahkan route untuk resource produk.
+
+use App\Http\Controllers\ProductController;
+
+Route::apiResource('products', ProductController::class);
+
+
+
+Bagian 2: Frontend - CRUD di ReactJS
+
+1. Setup API Client: Buat fungsi untuk mengirim request ke API.
+
+const API_URL = 'https://tesnet.berkahlestarijaya.com/api/products';
+
+const fetchProducts = async () => {
+    const response = await fetch(API_URL);
+    return response.json();
+};
+
+const addProduct = async (product) => {
+    const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(product),
+    });
+    return response.json();
+};
+
+const updateProduct = async (id, product) => {
+    const response = await fetch(`${API_URL}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(product),
+    });
+    return response.json();
+};
+
+const deleteProduct = async (id) => {
+    await fetch(`${API_URL}/${id}`, {
+        method: 'DELETE',
+    });
+};
+
+
+2. Menampilkan Daftar Produk: Buat komponen untuk menampilkan daftar produk.
+
+import { useEffect, useState } from 'react';
+
+function ProductList() {
+    const [products, setProducts] = useState([]);
+
+    useEffect(() => {
+        fetchProducts().then(data => setProducts(data));
+    }, []);
+
+    return (
+        <div>
+            <h2>Daftar Produk</h2>
+            <ul>
+                {products.map(product => (
+                    <li key={product.id}>
+                        {product.name} - {product.price}
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+}
+
+export default ProductList;
+
+
+3. Formulir untuk Menambah dan Mengedit Produk: Buat komponen untuk menambah atau mengedit produk.
+
+import { useState } from 'react';
+
+function ProductForm({ onSave }) {
+    const [product, setProduct] = useState({
+        name: '',
+        description: '',
+        price: '',
+        stock: '',
+    });
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setProduct(prevProduct => ({ ...prevProduct, [name]: value }));
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSave(product);
+    };
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <input type="text" name="name" placeholder="Nama Produk" onChange={handleChange} />
+            <textarea name="description" placeholder="Deskripsi" onChange={handleChange}></textarea>
+            <input type="number" name="price" placeholder="Harga" onChange={handleChange} />
+            <input type="number" name="stock" placeholder="Stok" onChange={handleChange} />
+            <button type="submit">Simpan</button>
+        </form>
+    );
+}
+
+export default ProductForm;
+
+
+4. Integrasi CRUD di Komponen Utama: Gabungkan semua komponen dan fungsi CRUD ke dalam komponen utama.
+
+import { useState, useEffect } from 'react';
+import ProductList from './ProductList';
+import ProductForm from './ProductForm';
+
+function App() {
+    const [products, setProducts] = useState([]);
+
+    useEffect(() => {
+        fetchProducts().then(data => setProducts(data));
+    }, []);
+
+    const handleAddProduct = (product) => {
+        addProduct(product).then(newProduct => setProducts([...products, newProduct]));
+    };
+
+    const handleDeleteProduct = (id) => {
+        deleteProduct(id).then(() => setProducts(products.filter(product => product.id !== id)));
+    };
+
+    return (
+        <div>
+            <h1>Manajemen Produk</h1>
+            <ProductForm onSave={handleAddProduct} />
+            <ProductList products={products} onDelete={handleDeleteProduct} />
+        </div>
+    );
+}
+
+export default App;
+
+
+
+Kode di atas akan memberikan fitur dasar untuk menampilkan, menambah, memperbarui, dan menghapus produk di frontend ReactJS dan backend Laravel.
