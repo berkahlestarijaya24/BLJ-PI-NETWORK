@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.ant-pagination .ant-pagination-item a {
+  color: #fff;
+}
+.ant-pagination .ant-pagination-item-active a {
+  color: purple;
+}
+
+.ant-pagination .ant-pagination-prev button,
+.ant-pagination .ant-pagination-next button {
+  color: #fff;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ant-pagination .ant-pagination-disabled .ant-pagination-item-link,
+.ant-pagination .ant-pagination-disabled:hover .ant-pagination-item-link {
+  color: #fff;
+  cursor: not-allowed;
+}
